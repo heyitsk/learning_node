@@ -1,0 +1,96 @@
+globalThis
+in the beginning node used global as the global object, chrome used window or this as the global object. So to standardise 1 word for all js runtimes "globalThis" came, in both node and browsers globalThis refers to as global object
+
+
+
+require("path") we use this log code written in the file who's path is provided 
+ISSUE-> you can log the items present in the file but you cannot access the function and variables in the file.WHY???       (refer to line 64)
+SOL-> for that you need to use module.exports({key:value,}) and then import it in the file using const obj = require("path")
+     you can access things provided in the export using key
+
+
+
+older approach
+module.exports={
+    x:x,
+    calculateSum:calculateSum
+}
+
+new approach 
+module.exports={
+    x,
+    calculateSum
+}
+NOTE:- whenver you do module.exports wrap it inside an object and then destructure it while importing 
+
+
+There are 2 types of modules
+-Common Js module (cjs)
+    by default in node js
+    use export and require
+    older way
+    synchronous
+    non strict mode
+
+-ES module (esm)
+    by def in react 
+    use import export (just like react)
+    newer way
+    by using {type:"module"} in package.json file 
+    {
+    "type": "module"
+    } once you do this you can't use require 
+    asynchronous
+    strict mode 
+
+
+current folder structure 
+-hello node 
+    calculate
+        sum.js
+        multiply.js
+    first.js
+    second.js
+So, now when you have multiple files inside a folder and have multiple exports you can just make the folder a module by creating index.js in the calculate folder 
+where you can import both calculateSum and multiply and then import both of them. So now in our first.js you no longer need to import them separately you can just import the folder which will behave like module 
+
+const {calculateSum, multiply, x} = require("./calculate") 
+or
+const {calculateSum, multiply, x} = require("./calculate/index.js")
+
+
+
+
+Whenever you call a require("/path") what actually  happens is all the code of that module is wrapped inside an IIFE and then passed to V8 engine for execution. 
+ex : this is what happends when you require("./sum")
+(function(){
+    function calculateSum(a,b){
+    sum = a+b
+    console.log("sum:",sum);
+}
+})() 
+So now all the variables and functions are in "private scope" and you can't access them from outside that's why you can't access them directly. You have to use module.exports to do that 
+-Now you must have a question from where is this module.exports and require is coming from
+    This is provided to us by NODE JS as a parameter to IIFE 
+    
+    (function(module,require){
+    function calculateSum(a,b){
+    sum = a+b 
+    console.log("sum:",sum);
+    }
+    })()
+
+
+
+
+When you call require("path") there is a 5 STEP process which occurs.A js file is not directly passed into V8 engine this is what happens 
+    1. Resolving the module     
+        whether the path is of a node module, js file, json file etc 
+    2. Loadint the module cko
+        all the code inside the module is loaded 
+    3. Wrapps inside IIFE
+        all the loaded code is wrapped inside IIFE
+    4. Code execution 
+        code inside IIFE is executed and the module.exports is returned in the obj. const obj = require("path")
+    5. Caching 
+        the code of the module is cached which means that if a file is required at multiple location the code of that file will just be executed once and then next time it is called it won't run these 5 steps again it'll just return it bcz of the caching 
