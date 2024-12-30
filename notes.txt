@@ -339,3 +339,11 @@ Vertical Scaling involves upgrading the hardware of an existing machine (e.g., i
     Fault tolerance is lower since if the machine fails, the entire system can go down.
     It’s simpler to implement for systems that don’t require massive scalability, such as smaller databases.
 
+
+
+mongo db is a document based database where we have documents, collection and fields unlike sql based databases which have tables, rows and columsn
+two ways to use use mongo db 
+    1. install it locally
+    2. let the mongo db host it on a server and provide you the access of it 
+
+install mongo db compass 
