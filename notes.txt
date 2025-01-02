@@ -155,11 +155,38 @@ are executed. These timers are checked, and if their time has
 expired, their corresponding callbacks are added to the callback queue for
 execution.
 setInterval
+A timer specifies the threshold after which a provided callback may be executed rather than the exact time a person wants it to be executed. Timers callbacks will run as early as they can be scheduled after the specified amount of time has passed; however, Operating System scheduling or the running of other callbacks may delay them.
+
+
+
 2. Poll Phase: After timers, the event loop enters the Poll phase, which is crucial
 because it handles I/O callbacks. For instance, when you perform a file read
 operation using fs.readFile , the callback associated with this I/O operation will
 be executed in this phase. The Poll phase is responsible for handling all I/O-
 related tasks, making it one of the most important phases in the event loop.
+The poll phase has two main functions:
+
+    Calculating how long it should block and poll for I/O, then
+    Processing events in the poll queue.
+
+When the event loop enters the poll phase and there are no timers scheduled, one of two things will happen:
+
+    If the poll queue is not empty, the event loop will iterate through its queue of callbacks executing them synchronously "until either the queue has been exhausted"(jab tak queue ke saare callback execute nahi ho jate execute krta rhega), or the system-dependent hard limit is reached.
+
+    If the poll queue is empty, one of two more things will happen:
+
+        If scripts have been scheduled by setImmediate(), the event loop will end the poll phase and continue to the check phase to execute those scheduled scripts.
+
+        If scripts have not been scheduled by setImmediate(), the event loop will wait for callbacks to be added to the queue, then execute them immediately.
+
+Once the poll queue is empty the event loop will check for timers whose time thresholds have been reached. If one or more timers are ready, the event loop will wrap back to the timers phase to execute those timers' callbacks.
+
+
+
+
+
+
+
 3. Check Phase: Next is the Check phase, where callbacks scheduled by the
 setImmediate function are executed. This utility API allows you to execute
 callbacks immediately after the Poll phase, giving you more control over the
@@ -172,8 +199,58 @@ released.
 Each phase has a FIFO queue of callbacks to execute. While each phase is special in its own way, generally, when the event loop enters a given phase, it will perform any operations specific to that phase, then execute callbacks in that phase's queue until the queue has been exhausted or the maximum number of callbacks has executed. When the queue has been exhausted or the callback limit is reached, the event loop will move to the next phase, and so on.
 
 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+setImmediate() vs setTimeout()
+
+setImmediate() and setTimeout() are similar, but behave in different ways depending on when they are called.
+
+    setImmediate() is designed to execute a script once the current poll phase completes.
+    setTimeout() schedules a script to be run after a minimum threshold in ms has elapsed.
+
+The order in which the timers are executed will vary depending on the context in which they are called. If both are called from within the main module, then timing will be bound by the performance of the process (which can be impacted by other applications running on the machine).
+
+For example, if we run the following script which is not within an I/O cycle (i.e. the main module), the order in which the two timers are executed is non-deterministic, as it is bound by the performance of the process:
+
+        // timeout_vs_immediate.js
+        setTimeout(() => {
+        console.log('timeout');
+        }, 0);
+
+        setImmediate(() => {
+        console.log('immediate');
+        });
+
+However, if you move the two calls within an I/O cycle, the immediate callback is always executed first:
+
+        // timeout_vs_immediate.js
+        const fs = require('node:fs');
+
+        fs.readFile(__filename, () => {
+        setTimeout(() => {
+            console.log('timeout');
+        }, 0);
+        setImmediate(() => {
+            console.log('immediate');
+        });
+        });
 
 
+
+The main advantage to using setImmediate() over setTimeout() is setImmediate() will always be executed before any timers if scheduled within an I/O cycle, independently of how many timers are present
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+process.nextTick() vs setImmediate()
+
+We have two calls that are similar as far as users are concerned, but their names are confusing.
+
+    process.nextTick() fires immediately on the same phase
+    setImmediate() fires on the following iteration or 'tick' of the event loop
+
+In essence, the names should be swapped. process.nextTick() fires more immediately than setImmediate(), but this is an artifact of the past which is unlikely to change.
+
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 if interviewer asks "Is node js single threaded or multi threaded?"
@@ -188,6 +265,8 @@ back the response, and then the socket is closed. This process involves opening 
 new connection for each request.
 
 
+
+Since most modern kernels are multi-threaded, they can handle multiple operations executing in the background. When one of these operations completes, the kernel tells Node.js so that the appropriate callback may be added to the poll queue to eventually be executed. We'll explain this in further detail later in this topic.
 EPOLL -> this works at the kernel level 
 User connects → Socket created → FD registered with epoll.
 Kernel monitors all registered FDs.
@@ -347,3 +426,40 @@ two ways to use use mongo db
     2. let the mongo db host it on a server and provide you the access of it 
 
 install mongo db compass 
+
+
+
+
+
+
+
+
+different types of rest apis 
+    these are known as "HTTP Methods"
+        get 
+        post 
+        put->to upgrade the data 
+        patch ->to update the data 
+        delete-> to delete the data 
+            the difference btw put and patch is that the put method replaces the entire old data with the new data while the patch method only update the selected field 
+            put is used when you want to update a whole collection with a new data 
+            patch is used when you want to just update a certain field in a collection like age etc 
+
+planning  is very important while starting a project and very cruical for backend dev as well 
+(refer to ss about api design and db design ) these are very crucial for working seamlessly and efficiently as you have an entire structure before you start working 
+
+
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+why are versions only is x.y.z "mongodb": "^6.12.0"
+what does x, y and z represent 
+    x-> major change which is a big breaking change
+    y-> minor update like some new feature added 
+    z-> minor patch like a bug fix 
+    so the change in y and z main downward compatibility which is basically that the older versions are compatible and working as well. 
+        ex:- if the version changes to 6.11.1 then your software will run 
+    this is not possible when x changes bcz it is a major change and your software might crash 
+
+    what does this "^" do?
+        it automatically updates the version with newer minor and path updates. It doesnot install any major update 
